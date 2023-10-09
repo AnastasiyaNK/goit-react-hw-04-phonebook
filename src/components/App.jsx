@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import css from './App.module.css';
 import { ContactList } from './ContactList/ContactList';
@@ -6,33 +6,21 @@ import { nanoid } from 'nanoid';
 import { ContactForm } from './ContactForm/ContactForm';
 import { Filter } from './Filter/Filter';
 
-export class App extends Component {
-  state = {
-    contacts: [
-      { id: 'id-1', name: 'Rosie Simpson', number: '459-12-56' },
-      { id: 'id-2', name: 'Hermione Kline', number: '443-89-12' },
-      { id: 'id-3', name: 'Eden Clements', number: '645-17-79' },
-      { id: 'id-4', name: 'Annie Copeland', number: '227-91-26' },
-    ],
-    filter: '',
-  };
-
-  componentDidMount() {
+export const App = () => {
+  const [contacts, setContacts] = useState(() => {
     const stringifiedContacts = localStorage.getItem('contacts');
     const parsedContacts = JSON.parse(stringifiedContacts) ?? [];
-    this.setState({
-      contacts: parsedContacts,
-    });
-  }
-  componentDidUpdate(_, prevState) {
-    if (prevState.contacts !== this.state.contacts) {
-      const stringifiedContacts = JSON.stringify(this.state.contacts);
-      localStorage.setItem('contacts', stringifiedContacts);
-    }
-  }
+    return parsedContacts;
+  });
+  const [filter, setFilter] = useState('');
 
-  handelAddContact = formData => {
-    const isInContact = this.state.contacts.some(
+  useEffect(() => {
+    const stringifiedContacts = JSON.stringify(contacts);
+    localStorage.setItem('contacts', stringifiedContacts);
+  }, [contacts]);
+
+  const handleAddContact = formData => {
+    const isInContact = contacts.some(
       contact => contact.name.toLowerCase() === formData.name
     );
 
@@ -44,50 +32,52 @@ export class App extends Component {
       name: formData.name,
       number: formData.number,
       id: nanoid(),
+      favourite: false,
     };
-
-    this.setState(prevStatet => {
-      return {
-        contacts: [...prevStatet.contacts, newContact],
-      };
-    });
+    setContacts(prevState => [...prevState, newContact]);
   };
 
-  handleDeleteContact = contactId => {
-    this.setState(prevState => ({
-      contacts: prevState.contacts.filter(contact => contact.id !== contactId),
-    }));
-  };
-
-  handleInputChange = event => {
-    this.setState(prevState => ({
-      filter: event.target.value,
-    }));
-  };
-
-  getVisibleContacts = () => {
-    return this.state.contacts.filter(contact =>
-      contact.name.toLowerCase().includes(this.state.filter.toLowerCase())
+  const handleDeleteContact = contactId => {
+    setContacts(prevState =>
+      prevState.filter(contact => contact.id !== contactId)
     );
   };
 
-  render() {
-    const filteredContactsByName = this.getVisibleContacts();
+  const handleInputChange = event => {
+    setFilter(event.target.value);
+  };
+  const toggleFavorite = contactId => {
+    // [{id: 1, favourite: false}]
 
-    return (
-      <div className={css.phoneBook}>
-        <ContactForm handelAddContact={this.handelAddContact} />
-        <h2>Contacts</h2>
-        <p>Find contacts by name</p>
-        <Filter
-          filter={this.state.filter}
-          handleInputChange={this.handleInputChange}
-        />
-        <ContactList
-          contacts={filteredContactsByName}
-          handleDeleteContact={this.handleDeleteContact}
-        />
-      </div>
+    setContacts(
+      contacts.map(contact => {
+        if (contact.id === contactId) {
+          return { ...contact, favourite: !contact.favourite };
+        }
+        return contact;
+      })
     );
-  }
-}
+  };
+
+  const getVisibleContacts = () => {
+    return contacts.filter(contact =>
+      contact.name.toLowerCase().includes(filter.toLowerCase())
+    );
+  };
+
+  const filteredContactsByName = getVisibleContacts();
+
+  return (
+    <div className={css.phoneBook}>
+      <ContactForm handleAddContact={handleAddContact} />
+      <h2>Contacts</h2>
+      <p>Find contacts by name</p>
+      <Filter filter={filter} handleInputChange={handleInputChange} />
+      <ContactList
+        contacts={filteredContactsByName}
+        handleDeleteContact={handleDeleteContact}
+        toggleFavorite={toggleFavorite}
+      />
+    </div>
+  );
+};
